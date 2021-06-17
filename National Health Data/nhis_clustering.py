@@ -4,6 +4,7 @@ from tensorflow.python.framework.error_interpolation import parse_message
 from sklearn import preprocessing
 from sklearn.preprocessing import Normalizer
 from sklearn.manifold import TSNE as tsne
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -23,7 +24,7 @@ class nhis_clustering():
     def __init__(self, data_path: str, num_layers: int, encoder_input_shape: tuple, decoder_input_shape: tuple) -> None:
         self.data = pd.read_csv(data_path, encoding= "euc-kr", header= None, dtype= None)
         self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
-        self.nhis_autoencoder = nhis_autoencoder( 3, encoder_input_shape, decoder_input_shape )
+        self.nhis_autoencoder = nhis_autoencoder( num_layers, encoder_input_shape, decoder_input_shape )
         
 
     
@@ -75,22 +76,38 @@ class nhis_clustering():
         return train_data, valid_data, valid_groups, unique_groups
 
 
-
-    
-
     def model_training(self):
-        pass
-    
+        autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
+        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 6, verbose = 1)
+
+
+        file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
+        mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, save_best_only=True)
+        print()
+        print('########## model fitting starts ##########')
+
+        autoencoder.fit(train_data, train_data,
+                        epochs=30,
+                        batch_size=32,
+                        shuffle=True,
+                        validation_data= (valid_data, valid_data),
+                        callbacks = [es])
+        
+        autoencoder.save("nhis_autoencoder_chl.h5")
+        encoder.save("nhis_encoder_chl.h5")
+        
+        # in order to see (visualize) how the data is distributed across the latent variables
+        # get latent vector for visualization
+        latent_vector = encoder.predict(valid_data)
+
+        ### Applying t-sne to the latent_vector ###
+        latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector)
+
+        return latent_vector, latent_vector2, valid_groups, unique_groups
     
 
 
 nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 3, (16,), (13,))
 train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
 
-print(train_data[:5,:])
-print(valid_data[:5,:])
-print(valid_groups[:5])
-print(unique_groups[:5])
-
-#nhis_c.data_preprocessing(3)
     

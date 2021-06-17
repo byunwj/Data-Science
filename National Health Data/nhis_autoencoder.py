@@ -7,17 +7,17 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 class nhis_encoder(tf.keras.Model):
     
-    def __init__(self, repetitions, input_shape):
+    def __init__(self, repetitions, latent_dim, input_shape):
         super(nhis_encoder, self).__init__()
         self.repetitions = repetitions
         self._input_shape = input_shape
+        self._latent_dim = latent_dim
 
         #encoder
         for i in range(self.repetitions):
-            neurons = int(128 / (i + 1)) if i < 2 else 3
-            vars(self)['encoded{}'.format(i)] = Dense(neurons)
+            neurons = int(128 / (i + 1)) if i < 2 else self._latent_dim
+            vars(self)['encoded{}'.format(i)] = Dense(neurons, activation= "relu")
             vars(self)['encoded{}_bn'.format(i)] =  BatchNormalization()
-            vars(self)['encoded{}_ac'.format(i)] = ReLU()
 
     
     def call(self, inputs):
@@ -80,14 +80,14 @@ class nhis_autoencoder(tf.keras.Model):
 
     def call(self, inputs):
         encoded = self.encoder(inputs)
-        decoded = self.decoder(encoded)
+        reconstructed = self.decoder(encoded)
 
-        return encoded, decoded
+        return reconstructed
 
 
     def model(self):
         x = Input( shape= self.encoder._input_shape )
-        _, output = self.call(x)
+        output = self.call(x)
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
 """

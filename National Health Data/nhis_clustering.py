@@ -80,7 +80,7 @@ class nhis_clustering():
 
 
     def model_training(self, train_data, valid_data):
-        autoencoder, encoder = self.nhis_autoencoder.model(), self.nhis_autoencoder.encoder.model()
+        autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
         autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
         es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 6, verbose = 1)
 

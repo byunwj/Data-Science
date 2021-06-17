@@ -5,6 +5,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import Normalizer
 from sklearn.manifold import TSNE as tsne
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+import tensorflow as tf
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -16,6 +17,8 @@ import random
 from scipy import stats
 from pylab import rcParams
 from nhis_autoencoder import nhis_encoder, nhis_decoder, nhis_autoencoder
+import shutil
+
 
 
 
@@ -76,11 +79,16 @@ class nhis_clustering():
         return train_data, valid_data, valid_groups, unique_groups
 
 
-    def model_training(self):
-        autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
+    def model_training(self, train_data, valid_data):
+        autoencoder, encoder = self.nhis_autoencoder.model(), self.nhis_autoencoder.encoder.model()
+        autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
         es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 6, verbose = 1)
 
+        if os.path.isdir('./training/'):
+            shutil.rmtree('./training/')
 
+        os.makedirs('./training/', exist_ok = True)
+        
         file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
         mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, save_best_only=True)
         print()
@@ -103,11 +111,11 @@ class nhis_clustering():
         ### Applying t-sne to the latent_vector ###
         latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector)
 
-        return latent_vector, latent_vector2, valid_groups, unique_groups
+        #return latent_vector, latent_vector2, valid_groups, unique_groups
     
 
 
 nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 3, (16,), (13,))
 train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-
+nhis_c.model_training(train_data, valid_data)
     

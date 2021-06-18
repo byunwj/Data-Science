@@ -1,16 +1,18 @@
 
 import tensorflow as tf
 
-from tensorflow.keras.layers import Input, Dense, BatchNormalization, Dropout, ReLU
+from tensorflow.keras.layers import Input, Dense, BatchNormalization, Dropout, ReLU, Flatten, Reshape
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
-class nhis_encoder(tf.keras.Model):
+class nhis_encoder(tf.keras.layers.Layer):
     
     def __init__(self, neurons: list, input_shape: tuple) -> None :
         super(nhis_encoder, self).__init__()
         self.neurons      = neurons       # the last element should be the desired latent dimension
         self._input_shape = input_shape   
+
+        self.flatten = Flatten() # for testing with mnist
 
         #encoder
         for i in range(len(self.neurons)): 
@@ -20,7 +22,8 @@ class nhis_encoder(tf.keras.Model):
 
     
     def call(self, inputs):
-        x = self.encoded0(inputs)
+        x = self.flatten(inputs)
+        x = self.encoded0(x)
         x = self.encoded0_bn(x)
 
         #encoder
@@ -36,7 +39,7 @@ class nhis_encoder(tf.keras.Model):
 
 
 
-class nhis_decoder(tf.keras.Model):
+class nhis_decoder(tf.keras.layers.Layer):
     
     def __init__(self, neurons: list, input_shape: tuple) -> None:
         super(nhis_decoder,self).__init__()
@@ -46,7 +49,8 @@ class nhis_decoder(tf.keras.Model):
         # decoder
         for i in range(len(self.neurons)):
             num_neurons = self.neurons[i]
-            vars(self)['decoded{}'.format(i)]    = Dense(num_neurons, activation = 'relu')
+            activation = None if i == len(self.neurons) -1 else 'relu'
+            vars(self)['decoded{}'.format(i)]    = Dense(num_neurons, activation = activation)
             vars(self)['decoded{}_bn'.format(i)] = BatchNormalization()
         
     def call(self, inputs):
@@ -58,6 +62,7 @@ class nhis_decoder(tf.keras.Model):
             x = vars(self)['decoded{}'.format(i)](x)        # dense layer + relu activation
             x = vars(self)['decoded{}_bn'.format(i)](x)     # batch norm layer
         
+        x = Reshape((28,28))(x)   # testing with mnist data
         return x
 
     def model(self):
@@ -85,7 +90,26 @@ class nhis_autoencoder(tf.keras.Model):
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
 
-nhis_auc = nhis_autoencoder( [128, 64, 32, 16, 3], (16,), [16, 32, 64, 128, 16], (3,) )
-nhis_auc.encoder.model().summary()
-nhis_auc.decoder.model().summary()
+nhis_auc = nhis_autoencoder( [128, 64], (28,28,), [128, 784], (64,) )
+#nhis_auc.encoder.model().summary()
+#nhis_auc.decoder.model().summary()
 nhis_auc.model().summary()
+
+nhis_auc.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
+
+from tensorflow.keras.datasets import fashion_mnist
+
+(x_train, _), (x_test, _) = fashion_mnist.load_data()
+
+x_train = x_train.astype('float32') / 255.
+x_test = x_test.astype('float32') / 255.
+
+print (x_train.shape)
+print (x_test.shape)
+
+"""
+nhis_auc.fit(x_train, x_train,
+                epochs=10,
+                shuffle=True,
+                validation_data=(x_test, x_test))
+"""

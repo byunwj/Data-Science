@@ -7,33 +7,30 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 class nhis_encoder(tf.keras.Model):
     
-    def __init__(self, repetitions, latent_dim, input_shape):
+    def __init__(self, neurons: list, input_shape: tuple) -> None :
         super(nhis_encoder, self).__init__()
-        self.repetitions = repetitions
+        self.neurons     = neurons       # the last element should be the desired latent dimension
         self._input_shape = input_shape
-        self._latent_dim = latent_dim
 
         #encoder
-        for i in range(self.repetitions):
-            neurons = int(128 / (i + 1)) if i < 2 else self._latent_dim
-            vars(self)['encoded{}'.format(i)] = Dense(neurons, activation= "relu")
-            vars(self)['encoded{}_bn'.format(i)] =  BatchNormalization()
+        for i in range(len(self.neurons)): 
+            num_neurons = self.neurons[i]
+            vars(self)['encoded{}'.format(i)]    = Dense(num_neurons, activation= "relu")
+            vars(self)['encoded{}_bn'.format(i)] = BatchNormalization()
 
     
     def call(self, inputs):
         x = self.encoded0(inputs)
         x = self.encoded0_bn(x)
-        x = self.encoded0_ac(x)
 
         #encoder
-        for i in range(1, self.repetitions):
-            x = vars(self)['encoded{}'.format(i)](x)        # dense layer
+        for i in range(1, len(self.neurons)):
+            x = vars(self)['encoded{}'.format(i)](x)        # dense + relu activation layer
             x = vars(self)['encoded{}_bn'.format(i)](x)     # batch norm layer
-            x = vars(self)['encoded{}_ac'.format(i)](x)     # relu activation
-        
+
         return x
     
-    def model(self):
+    def model(self) -> Model:
         x = Input( shape= self._input_shape )
         return Model(inputs = x, outputs = self.call(x), name = "encoder")
 
@@ -41,34 +38,32 @@ class nhis_encoder(tf.keras.Model):
 
 class nhis_decoder(tf.keras.Model):
     
-    def __init__(self, repetitions, input_shape):
+    def __init__(self, neurons: list, input_shape: tuple) -> None:
         super(nhis_decoder,self).__init__()
-        self.repetitions = repetitions
+        self.neurons = neurons
         self._input_shape = input_shape
 
         # decoder
-        for i in range(self.repetitions):
-            neurons = int(64 * (i + 1)) if i < 2 else 16
-            vars(self)['decoded{}'.format(i)] = Dense(neurons)
+        for i in range(len(self.neurons)):
+            num_neurons = self.neurons[i]
+            vars(self)['decoded{}'.format(i)] = Dense(num_neurons, activation = 'relu')
             vars(self)['decoded{}_bn'.format(i)] = BatchNormalization()
-            vars(self)['decoded{}_ac'.format(i)] = ReLU()
         
     def call(self, inputs):
         x = self.decoded0(inputs)
         x = self.decoded0_bn(x)
-        x = self.decoded0_ac(x)
 
         #encoder
-        for i in range(1, self.repetitions):
-            x = vars(self)['decoded{}'.format(i)](x)        # dense layer
+        for i in range(1, len(self.neurons)):
+            x = vars(self)['decoded{}'.format(i)](x)        # dense layer + relu activation
             x = vars(self)['decoded{}_bn'.format(i)](x)     # batch norm layer
-            x = vars(self)['decoded{}_ac'.format(i)](x)     # relu activation
         
         return x
 
     def model(self):
         x = Input( shape = self._input_shape )
         return Model(inputs = x, outputs = self.call(x), name = "decoder")
+
 
 
 class nhis_autoencoder(tf.keras.Model):
@@ -91,8 +86,9 @@ class nhis_autoencoder(tf.keras.Model):
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
 """
-nhis_autoenc = nhis_autoencoder( 3, (16,), (3,) )
-nhis_autoenc.encoder.model().summary()
-nhis_autoenc.decoder.model().summary()
-nhis_autoenc.model().summary()
+nhis_enc = nhis_encoder( [128, 64, 32, 16, 3], (16,))
+nhis_enc.model().summary()
+
+nhis_dec = nhis_decoder( [16, 32, 64, 128, 16], (3,))
+nhis_dec.model().summary()
 """

@@ -85,9 +85,7 @@ class nhis_autoencoder(tf.keras.Model):
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
 
-"""
 nhis_auc = nhis_autoencoder( [128, 64, 32, 16, 3], (16,), [16, 32, 64, 128, 16], (3,) )
 nhis_auc.encoder.model().summary()
 nhis_auc.decoder.model().summary()
 nhis_auc.model().summary()
-"""

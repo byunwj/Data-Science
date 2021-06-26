@@ -7,22 +7,14 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 class nhis_encoder(tf.keras.layers.Layer):
     
-    def __init__(self, neurons, latent_dim):
+    def __init__(self, latent_dim):
         super(nhis_encoder, self).__init__()
-        self.neurons = neurons
-        for i in range(len(neurons)):
-            vars(self)['encoded_{}'.format(i)] = Dense(self.neurons[i], activation = 'relu')
-        
-        #self.dense1 = Dense(128, activation = 'relu')
-        #self.dense2 = Dense(latent_dim, activation = 'relu')
+        self.dense1 = Dense(128, activation = 'relu')
+        self.dense2 = Dense(latent_dim, activation = 'relu')
     
     def call(self, inputs):
-        x = self.encoded_0(inputs)
-        for i in range(1, len(self.neurons)):
-            x = vars(self)['encoded_{}'.format(i)](x)
-
-        #x = self.dense1(inputs)
-        #x = self.dense2(x)
+        x = self.dense1(inputs)
+        x = self.dense2(x)
 
         return x
 
@@ -44,9 +36,9 @@ class nhis_decoder(tf.keras.layers.Layer):
 
 class nhis_autoencoder(tf.keras.Model):
 
-    def __init__(self, neurons, original_dim, latent_dim):
+    def __init__(self, original_dim, latent_dim):
         super(nhis_autoencoder, self).__init__()
-        self.encoder = nhis_encoder(neurons, latent_dim) 
+        self.encoder = nhis_encoder(latent_dim) 
         self.decoder = nhis_decoder(original_dim)
         self.original_dim = original_dim
 
@@ -62,7 +54,7 @@ class nhis_autoencoder(tf.keras.Model):
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
 
-nhis_auc = nhis_autoencoder([8, 3], 16, 3)
+nhis_auc = nhis_autoencoder(16, 3)
 nhis_auc.model().summary()
 nhis_auc.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
 

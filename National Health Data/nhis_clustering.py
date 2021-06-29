@@ -24,10 +24,10 @@ import shutil
 
 class nhis_clustering():
 
-    def __init__(self, data_path: str, num_layers: int, encoder_input_shape: tuple, decoder_input_shape: tuple) -> None:
+    def __init__(self, data_path: str,  original_dim: int, latent_dim: int) -> None:
         self.data = pd.read_csv(data_path, encoding= "euc-kr", header= None, dtype= None)
         self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
-        self.nhis_autoencoder = nhis_autoencoder( num_layers, encoder_input_shape, decoder_input_shape )
+        self.nhis_autoencoder = nhis_autoencoder( original_dim, latent_dim )
         
 
     
@@ -95,14 +95,14 @@ class nhis_clustering():
         print('########## model fitting starts ##########')
 
         autoencoder.fit(train_data, train_data,
-                        epochs=30,
+                        epochs=5,
                         batch_size=32,
                         shuffle=True,
                         validation_data= (valid_data, valid_data),
-                        callbacks = [es])
+                        callbacks = [es, mc])
         
-        autoencoder.save("nhis_autoencoder_chl.h5")
-        encoder.save("nhis_encoder_chl.h5")
+        #autoencoder.save("nhis_autoencoder_chl.h5")
+        #encoder.save("nhis_encoder_chl.h5")
         
         # in order to see (visualize) how the data is distributed across the latent variables
         # get latent vector for visualization
@@ -115,7 +115,7 @@ class nhis_clustering():
     
 
 
-nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 3, (16,), (13,))
+nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 16 ,3 )
 train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
 nhis_c.model_training(train_data, valid_data)
     

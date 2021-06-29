@@ -5,7 +5,7 @@ from tensorflow.keras.layers import Input, Dense, BatchNormalization, Dropout, R
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
-class nhis_encoder(tf.keras.layers.Layer):
+class nhis_encoder(tf.keras.Model):
     
     def __init__(self, latent_dim):
         super(nhis_encoder, self).__init__()
@@ -19,7 +19,7 @@ class nhis_encoder(tf.keras.layers.Layer):
         return x
 
 
-class nhis_decoder(tf.keras.layers.Layer):
+class nhis_decoder(tf.keras.Model):
     
     def __init__(self, original_dim):
         super(nhis_decoder,self).__init__()

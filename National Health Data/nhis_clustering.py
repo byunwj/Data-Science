@@ -92,13 +92,13 @@ class nhis_clustering():
         file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
         mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, save_best_only=True)
         print()
-        print('########## model fitting starts ##########')
+        print('#################### model fitting starts ####################')
 
         autoencoder.fit(train_data, train_data,
-                        epochs=5,
-                        batch_size=32,
-                        shuffle=True,
-                        validation_data= (valid_data, valid_data),
+                        epochs = 15,
+                        batch_size = 32,
+                        shuffle = True,
+                        validation_data = (valid_data, valid_data),
                         callbacks = [es, mc])
         
         #autoencoder.save("nhis_autoencoder_chl.h5")
@@ -111,11 +111,142 @@ class nhis_clustering():
         ### Applying t-sne to the latent_vector ###
         latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector)
 
-        #return latent_vector, latent_vector2, valid_groups, unique_groups
+        return latent_vector, latent_vector2
     
+    def cluster_visualization_3D(self, latent_vector, valid_groups, unique_groups):
+        low_idx = np.where(valid_groups == 1)[0]
+        high_idx = np.where(valid_groups == 2)[0]
+        no_idx = np.where(valid_groups == 3)[0]
+
+        xs = latent_vector[:, 0]
+        ys = latent_vector[:, 1]
+        zs = latent_vector[:, 2]
+
+        # visualize in 3D plot
+        rcParams['figure.figsize'] = 12, 10
+
+        fig1 = plt.figure(1)
+
+        ax1 = fig1.add_subplot(221, projection = '3d')
+        ax2 = fig1.add_subplot(222, projection = '3d')
+        ax3 = fig1.add_subplot(223, projection = '3d')
+        ax4 = fig1.add_subplot(224, projection = '3d')
+
+        #plot1 / ax1
+        low_xs = latent_vector[low_idx, 0]
+        low_ys = latent_vector[low_idx, 1]
+        low_zs = latent_vector[low_idx, 2]
+        for x, y, z in zip(low_xs, low_ys, low_zs):
+            ax1.text(x, y, z, 1, fontsize = 4, backgroundcolor='red')
+            
+        ax1.set_xlim(xs.min()*2, xs.max()*2)
+        ax1.set_ylim(ys.min()*2, ys.max()*2)
+        ax1.set_zlim(zs.min()*2, zs.max()*2)
+
+        #plot2 / ax2
+        high_xs = latent_vector[high_idx, 0]
+        high_ys = latent_vector[high_idx, 1]
+        high_zs = latent_vector[high_idx, 2]
+        for x, y, z in zip(high_xs, high_ys, high_zs):
+            ax2.text(x, y, z, 2, fontsize = 4, backgroundcolor='blue')
+            
+        ax2.set_xlim(xs.min()*2, xs.max()*2)
+        ax2.set_ylim(ys.min()*2, ys.max()*2)
+        ax2.set_zlim(zs.min()*2, zs.max()*2)
+
+        #plot3 / ax3
+        no_xs = latent_vector[no_idx, 0]
+        no_ys = latent_vector[no_idx, 1]
+        no_zs = latent_vector[no_idx, 2]
+        for x, y, z in zip(high_xs, high_ys, high_zs):
+            ax3.text(x, y, z, 3, fontsize = 4, backgroundcolor='green')
+            
+        ax3.set_xlim(xs.min()*2, xs.max()*2)
+        ax3.set_ylim(ys.min()*2, ys.max()*2)
+        ax3.set_zlim(zs.min()*2, zs.max()*2)
+
+        #plot4 / ax4
+        color=['red','blue', 'green'] 
+
+        for x, y, z, label in zip(xs, ys, zs, valid_groups):
+            col_ind = np.where(unique_groups == label)[0][0]
+            c = color[col_ind]
+            ax4.text(x, y, z, label, fontsize = 4, backgroundcolor=c)
+            
+        ax4.set_xlim(xs.min()*2, xs.max()*2)
+        ax4.set_ylim(ys.min()*2, ys.max()*2)
+        ax4.set_zlim(zs.min()*2, zs.max()*2)
+
+        plt.savefig('3D_3groups_CHL.png', dpi=100)
+        plt.show()
 
 
-nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 16 ,3 )
-train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-nhis_c.model_training(train_data, valid_data)
+    def cluster_visualization_2D(self, latent_vector2, valid_groups, unique_groups):
+        low_idx = np.where(valid_groups == 1)[0]
+        high_idx = np.where(valid_groups == 2)[0]
+        no_idx = np.where(valid_groups == 3)[0]
+
+        xs = latent_vector2[:, 0]
+        ys = latent_vector2[:, 1]
+        
+        # visualize in 2D plot
+        rcParams['figure.figsize'] = 10, 8
+        fig2 = plt.figure(2)
+
+        ax1 = fig2.add_subplot(221)
+        ax2 = fig2.add_subplot(222)
+        ax3 = fig2.add_subplot(223)
+        ax4 = fig2.add_subplot(224)
+        
+        # plot1 / ax1
+        low_xs = latent_vector2[low_idx, 0]
+        low_ys = latent_vector2[low_idx, 1]
+
+        for x, y in zip(low_xs, low_ys):
+            ax1.text(x, y, 1, fontsize=4, backgroundcolor='red')
+
+        ax1.set_xlim(xs.min()*2, xs.max()*2)
+        ax1.set_ylim(ys.min()*2, ys.max()*2)
+
+        # plot2 / ax2
+        high_xs = latent_vector2[high_idx, 0]
+        high_ys = latent_vector2[high_idx, 1]
+
+        for x, y in zip(high_xs, high_ys):
+            ax2.text(x, y, 2, fontsize=4, backgroundcolor='blue')
+
+        ax2.set_xlim(xs.min()*2, xs.max()*2)
+        ax2.set_ylim(ys.min()*2, ys.max()*2)
+
+        # plot3 / ax3
+        no_xs = latent_vector2[no_idx, 0]
+        no_ys = latent_vector2[no_idx, 1]
+
+        for x, y in zip(no_xs, no_ys):
+            ax3.text(x, y, 3, fontsize=4, backgroundcolor='green')
+
+        ax3.set_xlim(xs.min()*2, xs.max()*2)
+        ax3.set_ylim(ys.min()*2, ys.max()*2)
+        
+        # plot4 / ax4
+        color=['red', 'blue', 'green'] 
+        
+        for x, y, label in zip(xs, ys, valid_groups):
+            col_ind = np.where(unique_groups == label)[0][0]
+            c = color[col_ind]
+            ax4.text(x, y, label, fontsize=4, backgroundcolor=c)
+            
+        ax4.set_xlim(xs.min()*2, xs.max()*2)
+        ax4.set_ylim(ys.min()*2, ys.max()*2)
+
+        #plt.savefig('2D_3groups_CHL.png', dpi=100)
+        plt.show()
+
+if __name__ == "__main__":
+    nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 16 ,3 )
+    train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
+    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data)
+    #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
+    nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups) 
+
     

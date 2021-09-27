@@ -79,27 +79,27 @@ class nhis_clustering():
         return train_data, valid_data, valid_groups, unique_groups
 
 
-    def model_training(self, train_data, valid_data):
+    def model_training(self, train_data, valid_data, epoch):
         autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
         autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
-        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 6, verbose = 1)
+        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 10, verbose = 1)
 
         if os.path.isdir('./training/'):
             shutil.rmtree('./training/')
 
         os.makedirs('./training/', exist_ok = True)
         
-        file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
-        mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, save_best_only=True)
+        #file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
+        #mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, save_best_only=True)
         print()
         print('#################### model fitting starts ####################')
 
         autoencoder.fit(train_data, train_data,
-                        epochs = 15,
+                        epochs = epoch,
                         batch_size = 32,
                         shuffle = True,
                         validation_data = (valid_data, valid_data),
-                        callbacks = [es, mc])
+                        callbacks = [es])
         
         #autoencoder.save("nhis_autoencoder_chl.h5")
         #encoder.save("nhis_encoder_chl.h5")
@@ -239,13 +239,13 @@ class nhis_clustering():
         ax4.set_xlim(xs.min()*2, xs.max()*2)
         ax4.set_ylim(ys.min()*2, ys.max()*2)
 
-        #plt.savefig('2D_3groups_CHL.png', dpi=100)
+        plt.savefig('2D_3groups_CHL.png', dpi=100)
         plt.show()
 
 if __name__ == "__main__":
-    nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 16 ,3 )
+    nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 16 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data)
+    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups) 
 

@@ -39,12 +39,13 @@ class nhis_clustering():
         print(np.count_nonzero(~np.isnan(used_data).any(axis=1))) #996603
         used_data = used_data[~np.isnan(used_data).any(axis=1)]
         
-        #16 features + choleterol groups
+        #15 features + choleterol groups
         data_final = np.zeros((996603,17)) 
         data_final[:,0] = np.round(used_data[:,1]/((used_data[:,0]/100)**2)) # BMI formula
         data_final[:,1:-1] = used_data[:,2:]                                 # copy the rest
         data_final[:,-1] = used_data[:,8]                                    # dummy for the label later
-
+        data_final = np.delete(data_final, 8, 1)                             # drop the cholesterol column    
+        
         # labeling
         chl_idx1 = np.where(data_final[:,-1] < 125)[0] # 20502
         chl_idx2 = np.where(data_final[:,-1] > 280)[0] # 20501
@@ -59,7 +60,6 @@ class nhis_clustering():
         data_final = data_final[chl_idx, :]            # only use the ones in one of the three groups 
 
         np.random.seed(0)                              # to get the same result and compare
-
         perm_list = list(np.random.permutation(len(chl_idx)))
         rnd_train = perm_list[:len(chl_idx)-valid_size]
         rnd_valid = perm_list[len(chl_idx)-valid_size:]
@@ -70,8 +70,6 @@ class nhis_clustering():
         valid_groups = data_final[rnd_valid, -1]      # the label of validation data
         unique_groups = np.unique(valid_groups)       # the unqiue labels of validation data -> 1,2,3
      
-        #train_data = preprocessing.normalize(train_data, norm= 'l2') #nomalization using sklearn
-        #valid_data = preprocessing.normalize(valid_data, norm= 'l2') #nomalization using sklearn
         normalizer = Normalizer().fit(train_data)
         train_data = normalizer.transform(train_data)
         valid_data = normalizer.transform(valid_data)
@@ -202,9 +200,7 @@ class nhis_clustering():
         low_xs = latent_vector2[low_idx, 0]
         low_ys = latent_vector2[low_idx, 1]
 
-        for x, y in zip(low_xs, low_ys):
-            ax1.text(x, y, 1, fontsize=4, backgroundcolor='red')
-
+        ax1.scatter(low_xs, low_ys, s = 40 , color = 'red', label = 'low cholesterol')
         ax1.set_xlim(xs.min()*2, xs.max()*2)
         ax1.set_ylim(ys.min()*2, ys.max()*2)
 
@@ -212,9 +208,7 @@ class nhis_clustering():
         high_xs = latent_vector2[high_idx, 0]
         high_ys = latent_vector2[high_idx, 1]
 
-        for x, y in zip(high_xs, high_ys):
-            ax2.text(x, y, 2, fontsize=4, backgroundcolor='blue')
-
+        ax2.scatter(high_xs, high_ys, s = 40 , color = 'blue', label = 'high cholesterol')
         ax2.set_xlim(xs.min()*2, xs.max()*2)
         ax2.set_ylim(ys.min()*2, ys.max()*2)
 
@@ -222,30 +216,31 @@ class nhis_clustering():
         no_xs = latent_vector2[no_idx, 0]
         no_ys = latent_vector2[no_idx, 1]
 
-        for x, y in zip(no_xs, no_ys):
-            ax3.text(x, y, 3, fontsize=4, backgroundcolor='green')
-
+        ax3.scatter(no_xs, no_ys, s = 40 , color = 'green', label = 'normal cholesterol')
         ax3.set_xlim(xs.min()*2, xs.max()*2)
         ax3.set_ylim(ys.min()*2, ys.max()*2)
         
         # plot4 / ax4
-        color=['red', 'blue', 'green'] 
+        color = ['red', 'blue', 'green'] 
+        labels = ['low cholesterol', 'high cholesterol', 'normal cholesterol']
         
-        for x, y, label in zip(xs, ys, valid_groups):
-            col_ind = np.where(unique_groups == label)[0][0]
-            c = color[col_ind]
-            ax4.text(x, y, label, fontsize=4, backgroundcolor=c)
-            
+        ax4.scatter(low_xs, low_ys, s = 40 , color = 'red', label = 'low cholesterol')
+        ax4.scatter(high_xs, high_ys, s = 40 , color = 'blue', label = 'high cholesterol')
+        ax4.scatter(no_xs, no_ys, s = 40 , color = 'green', label = 'normal cholesterol')
         ax4.set_xlim(xs.min()*2, xs.max()*2)
         ax4.set_ylim(ys.min()*2, ys.max()*2)
 
-        plt.savefig('2D_3groups_CHL.png', dpi=100)
+        ax1.legend(prop={'size': 8})
+        ax2.legend(prop={'size': 8})
+        ax3.legend(prop={'size': 8})
+        ax4.legend(prop={'size': 8})
         plt.show()
+        plt.savefig('2D_3groups_CHL.png', dpi=100)
 
 if __name__ == "__main__":
-    nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 16 ,3)
+    nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 100)
+    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 10)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups) 
 

@@ -54,7 +54,7 @@ class nhis_autoencoder(tf.keras.Model):
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
 
-nhis_auc = nhis_autoencoder(16, 3)
+nhis_auc = nhis_autoencoder(15, 3)
 nhis_auc.model().summary()
 nhis_auc.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
 

@@ -234,13 +234,13 @@ class nhis_clustering():
         ax2.legend(prop={'size': 8})
         ax3.legend(prop={'size': 8})
         ax4.legend(prop={'size': 8})
+        plt.savefig('2D_3groups_CHL.png')
         plt.show()
-        plt.savefig('2D_3groups_CHL.png', dpi=100)
-
+        
 if __name__ == "__main__":
     nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 10)
+    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 20)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups) 
 

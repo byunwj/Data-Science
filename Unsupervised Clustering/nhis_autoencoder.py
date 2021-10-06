@@ -1,9 +1,11 @@
 
+from enum import auto
 import tensorflow as tf
 
 from tensorflow.keras.layers import Input, Dense, BatchNormalization, Dropout, ReLU, Flatten, Reshape
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.python import training
 
 class nhis_encoder(tf.keras.Model):
     
@@ -15,7 +17,6 @@ class nhis_encoder(tf.keras.Model):
     def call(self, inputs):
         x = self.dense1(inputs)
         x = self.dense2(x)
-
         return x
 
 
@@ -29,7 +30,6 @@ class nhis_decoder(tf.keras.Model):
     def call(self, inputs):
         x = self.dense1(inputs)
         x = self.dense2(x)
-
         return x
 
 
@@ -45,7 +45,6 @@ class nhis_autoencoder(tf.keras.Model):
     def call(self, inputs):
         encoded       = self.encoder(inputs)
         reconstructed = self.decoder(encoded)
-
         return reconstructed
 
     def model(self):
@@ -57,4 +56,9 @@ class nhis_autoencoder(tf.keras.Model):
 nhis_auc = nhis_autoencoder(15, 3)
 nhis_auc.model().summary()
 nhis_auc.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
+autoencoder = nhis_auc.model()
 
+"""
+autoencoder.load_weights("./training/Epoch_001_Val_21.805.hdf5")
+autoencoder.encoder.predict([[1,2,3]])
+"""

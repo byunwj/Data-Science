@@ -87,20 +87,18 @@ class nhis_clustering():
 
         os.makedirs('./training/', exist_ok = True)
         
-        #file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
-        #mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, save_best_only=True)
+        file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
+        mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, \
+                             save_best_only=True, save_weights_only=True)
         print()
         print('#################### model fitting starts ####################')
-
-        autoencoder.fit(train_data, train_data,
+  
+        hist = autoencoder.fit(train_data, train_data,
                         epochs = epoch,
                         batch_size = 32,
                         shuffle = True,
                         validation_data = (valid_data, valid_data),
-                        callbacks = [es])
-        
-        #autoencoder.save("nhis_autoencoder_chl.h5")
-        #encoder.save("nhis_encoder_chl.h5")
+                        callbacks= [mc, es])
         
         # in order to see (visualize) how the data is distributed across the latent variables
         # get latent vector for visualization
@@ -240,7 +238,7 @@ class nhis_clustering():
 if __name__ == "__main__":
     nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 20)
+    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups) 
 

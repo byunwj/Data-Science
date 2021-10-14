@@ -18,6 +18,8 @@ from scipy import stats
 from pylab import rcParams
 from nhis_autoencoder import nhis_encoder, nhis_decoder, nhis_autoencoder
 import shutil
+import plotly.express as px
+
 
 
 
@@ -234,7 +236,14 @@ class nhis_clustering():
         ax4.legend(prop={'size': 8})
         plt.savefig('2D_3groups_CHL.png')
         plt.show()
-        
+    
+
+    def plotting_3d(self):
+        df = px.data.iris()
+        fig = px.scatter_3d(df, x='sepal_length', y='sepal_width', z='petal_width',
+              color='species')
+        fig.show()
+
 if __name__ == "__main__":
     nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)

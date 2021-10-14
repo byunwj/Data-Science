@@ -240,6 +240,6 @@ if __name__ == "__main__":
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
     latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
-    nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups) 
+    nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups)
 
     

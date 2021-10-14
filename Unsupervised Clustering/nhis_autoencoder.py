@@ -12,11 +12,15 @@ class nhis_encoder(tf.keras.Model):
     def __init__(self, latent_dim):
         super(nhis_encoder, self).__init__()
         self.dense1 = Dense(128, activation = 'relu')
+        self.bn1 = BatchNormalization()
         self.dense2 = Dense(latent_dim, activation = 'relu')
+        self.bn2 = BatchNormalization()
     
     def call(self, inputs):
         x = self.dense1(inputs)
+        x = self.bn1(x)
         x = self.dense2(x)
+        x = self.bn2(x)
         return x
 
 
@@ -25,11 +29,15 @@ class nhis_decoder(tf.keras.Model):
     def __init__(self, original_dim):
         super(nhis_decoder,self).__init__()
         self.dense1 = Dense(128, activation = 'relu')
+        self.bn1 = BatchNormalization()
         self.dense2 = Dense(original_dim, activation = 'sigmoid')
+        self.bn2 = BatchNormalization()
         
     def call(self, inputs):
         x = self.dense1(inputs)
+        x = self.bn1(x)
         x = self.dense2(x)
+        x = self.bn2(x)
         return x
 
 

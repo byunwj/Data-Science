@@ -1,6 +1,4 @@
-
-
-from tensorflow.python.framework.error_interpolation import parse_message
+#from tensorflow.python.framework.error_interpolation import parse_message
 from sklearn import preprocessing
 from sklearn.preprocessing import Normalizer
 from sklearn.manifold import TSNE as tsne
@@ -82,7 +80,7 @@ class nhis_clustering():
     def model_training(self, train_data, valid_data, epoch):
         autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
         autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
-        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 10, verbose = 1)
+        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 15, verbose = 1)
 
         if os.path.isdir('./training/'):
             shutil.rmtree('./training/')
@@ -238,17 +236,39 @@ class nhis_clustering():
         plt.show()
     
 
-    def plotting_3d(self):
-        df = px.data.iris()
-        fig = px.scatter_3d(df, x='sepal_length', y='sepal_width', z='petal_width',
-              color='species')
+    def plotting(self, latent_vector3, latent_vector2, valid_groups):
+        low_idx = np.where(valid_groups == 1)[0]
+        high_idx = np.where(valid_groups == 2)[0]
+        no_idx = np.where(valid_groups == 3)[0]
+
+        df_3d = pd.DataFrame(latent_vector3, columns= ['x','y','z'])
+        df_3d['groups'] = -1
+        df_3d['groups'].iloc[low_idx] = 'low cholesterol'
+        df_3d['groups'].iloc[high_idx] = 'high cholesterol'
+        df_3d['groups'].iloc[no_idx] = 'normal cholesterol'
+        
+        fig = px.scatter_3d(df_3d, x='x', y='y', z='z', color='groups')
+        fig.write_html('./3D_3groups_CHL.html')
         fig.show()
+
+        df_2d = pd.DataFrame(latent_vector2, columns= ['x','y'])
+        df_2d['groups'] = -1
+        df_2d['groups'].iloc[low_idx] = 'low cholesterol'
+        df_2d['groups'].iloc[high_idx] = 'high cholesterol'
+        df_2d['groups'].iloc[no_idx] = 'normal cholesterol'
+        
+        fig = px.scatter(df_3d, x='x', y='y', color='groups')
+        fig.write_html('./2D_3groups_CHL.html')
+        fig.show()
+
+
+
 
 if __name__ == "__main__":
     nhis_c = nhis_clustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    latent_vector, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
+    latent_vector3, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
-    nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups)
-
+    #nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups)
+    nhis_c.plotting(latent_vector3, latent_vector2, valid_groups)
     

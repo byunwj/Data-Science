@@ -115,6 +115,16 @@ class NhisClustering():
 
         return latent_vector, latent_vector2
     
+    def tsne_clustering(self, train_data, valid_data):
+        tsne_cluster2 = tsne(n_components = 2)
+        tsne_cluster3 = tsne(n_components = 3)
+        tsne_cluster2.fit(train_data)
+        tsne_cluster3.fit(train_data)
+        latent_vector2 = tsne_cluster2.fit_transform(valid_data)
+        latent_vector3 = tsne_cluster3.fit_transform(valid_data)
+
+        return latent_vector3, latent_vector2
+
     def cluster_visualization_3D(self, latent_vector, valid_groups, unique_groups):
         low_idx = np.where(valid_groups == 1)[0]
         high_idx = np.where(valid_groups == 2)[0]
@@ -273,7 +283,8 @@ class NhisClustering():
 if __name__ == "__main__":
     nhis_c = NhisClustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    latent_vector3, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
+    #latent_vector3, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
+    latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     #nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups)
     nhis_c.plotting(latent_vector3, latent_vector2, valid_groups)

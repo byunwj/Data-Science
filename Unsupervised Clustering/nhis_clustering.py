@@ -26,7 +26,8 @@ import plotly.express as px
 class NhisClustering():
 
     def __init__(self, data_path: str,  original_dim: int, latent_dim: int) -> None:
-        self.data = pd.read_csv(data_path, encoding= "euc-kr", header= None, dtype= None)
+        self.data = pd.read_csv(data_path, encoding="cp949", header=None, dtype = None)
+        #self.data = pd.read_csv(data_path, encoding= "euc-kr", header= None, dtype= None)
         self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
         self.nhis_autoencoder = NhisAutoencoder( original_dim, latent_dim )
         self.nhis_vae = VariationalAutoEncoder( original_dim, latent_dim )
@@ -79,7 +80,7 @@ class NhisClustering():
         return train_data, valid_data, valid_groups, unique_groups
 
 
-    def model_training(self, train_data, valid_data, epoch):
+    def model_training(self, train_data, epoch):
         #autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
         #autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
         autoencoder, encoder = self.nhis_vae, self.nhis_vae.encoder
@@ -105,15 +106,8 @@ class NhisClustering():
                         validation_data = (valid_data, valid_data),
                         callbacks= [mc, es])
         
-        # in order to see (visualize) how the data is distributed across the latent variables
-        # get latent vector for visualization
-        #latent_vector = encoder.predict(valid_data)
-        _, _, latent_vector = encoder(valid_data)
- 
-        ### Applying t-sne to the latent_vector ###
-        latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector)
-
-        return latent_vector, latent_vector2
+        return hist
+        
     
     def tsne_clustering(self, train_data, valid_data):
         tsne_cluster2 = tsne(n_components = 2)
@@ -251,8 +245,29 @@ class NhisClustering():
         plt.savefig('2D_3groups_CHL.png')
         plt.show()
     
+    def load_model(self, path, type):
+        if type == 'vae':
+            self.nhis_vae(tf.ones((1, 15)))
+            self.nhis_vae.load_weights(path)
+            encoder = self.nhis_vae.encoder
+        else:
+            self.nhis_autoencoder(tf.ones((1, 15)))
+            self.nhis_autoencoder.load_weights(path)
+            encoder = self.nhis_autoencoder.encoder
+        
+        return encoder
 
-    def plotting(self, latent_vector3, latent_vector2, valid_groups):
+    def plotting(self, encoder, valid_data, valid_groups):
+        
+        # in order to see (visualize) how the data is distributed across the latent variables
+        # get latent vector for visualization
+        #latent_vector = encoder.predict(valid_data)
+        _, _, latent_vector3 = encoder(valid_data)
+        latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
+
+        # Applying t-sne to the 3-dimensional latent_vector
+        latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector3)
+
         low_idx = np.where(valid_groups == 1)[0]
         high_idx = np.where(valid_groups == 2)[0]
         no_idx = np.where(valid_groups == 3)[0]
@@ -283,9 +298,10 @@ class NhisClustering():
 if __name__ == "__main__":
     nhis_c = NhisClustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    #latent_vector3, latent_vector2 = nhis_c.model_training(train_data, valid_data, epoch = 50)
-    latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
+    #hist = nhis_c.model_training(train_data, epoch = 50)
+    encoder = nhis_c.load_model("./training/Epoch_002_Val_22.741.hdf5", 'vae')
+    nhis_c.plotting(encoder, valid_data, valid_groups)
+    #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     #nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups)
-    nhis_c.plotting(latent_vector3, latent_vector2, valid_groups)
     

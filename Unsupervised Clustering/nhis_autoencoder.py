@@ -60,14 +60,14 @@ class NhisAutoencoder(tf.keras.Model):
         output = self.call(x)
         return Model(inputs = x, outputs = output, name = "autoencoder")
 
-
 """
 nhis_auc = NhisAutoencoder(15, 3)
 nhis_auc.model().summary()
-#nhis_auc.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
-#autoencoder = nhis_auc.model()
+nhis_auc.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
+autoencoder = nhis_auc.model()
 
 
-autoencoder.load_weights("./training/Epoch_001_Val_21.805.hdf5")
+autoencoder.load_weights("./training/Epoch_002_Val_35.798.hdf5")
 autoencoder.encoder.predict([[1,2,3]])
 """
+

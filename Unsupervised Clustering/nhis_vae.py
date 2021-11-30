@@ -73,13 +73,14 @@ class VariationalAutoEncoder(tf.keras.Model):
         output = self.call(x)
         return Model(inputs = x, outputs = output, name = "variational autoencoder")
 
-
+"""
 vae= VariationalAutoEncoder(15, 3)
 vae.model().summary()
 vae.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
 vae(tf.ones((1, 15)))
 vae.load_weights("./training/Epoch_002_Val_22.741.hdf5")
 print( vae.encoder( tf.ones((1,15)) ) )
+"""
 
 #autoencoder = vae.model()
 #autoencoder.load_weights("./training/Epoch_002_Val_22.741.hdf5")

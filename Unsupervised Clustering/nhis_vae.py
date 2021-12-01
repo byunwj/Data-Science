@@ -82,7 +82,4 @@ vae.load_weights("./training/Epoch_002_Val_22.741.hdf5")
 print( vae.encoder( tf.ones((1,15)) ) )
 """
 
-#autoencoder = vae.model()
-#autoencoder.load_weights("./training/Epoch_002_Val_22.741.hdf5")
-
 

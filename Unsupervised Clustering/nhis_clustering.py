@@ -27,23 +27,24 @@ class NhisClustering():
 
     def __init__(self, data_path: str,  original_dim: int, latent_dim: int) -> None:
         self.data = pd.read_csv(data_path, encoding="cp949", header=None, dtype = None)
-        #self.data = pd.read_csv(data_path, encoding= "euc-kr", header= None, dtype= None)
-        self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
-        self.nhis_autoencoder = NhisAutoencoder( original_dim, latent_dim )
-        self.nhis_vae = VariationalAutoEncoder( original_dim, latent_dim )
+        self.original_dim = original_dim
+        self.latent_dim   = latent_dim
+        self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
+        self.nhis_autoencoder = NhisAutoencoder( self.original_dim, self.latent_dim )
+        self.nhis_vae = VariationalAutoEncoder( self.original_dim, self.latent_dim )
         
 
     
     def data_preprocessing(self, valid_size: int) -> np.ndarray:
-        raw_data = self.data.values[1:,]
+        raw_data = self.data.values[1:,] # dropping the column names
         raw_data = raw_data[:,5:25].astype(np.float64)
         used_data = raw_data[:,self.useful_col]
         
         print(np.count_nonzero(~np.isnan(used_data).any(axis=1))) #996603
         used_data = used_data[~np.isnan(used_data).any(axis=1)]
         
-        #15 features + choleterol groups
-        data_final = np.zeros((996603,17)) 
+        #13 features + choleterol groups
+        data_final = np.zeros((np.count_nonzero(~np.isnan(used_data).any(axis=1)), 15)) 
         data_final[:,0] = np.round(used_data[:,1]/((used_data[:,0]/100)**2)) # BMI formula
         data_final[:,1:-1] = used_data[:,2:]                                 # copy the rest
         data_final[:,-1] = used_data[:,8]                                    # dummy for the label later
@@ -72,11 +73,11 @@ class NhisClustering():
 
         valid_groups = data_final[rnd_valid, -1]      # the label of validation data
         unique_groups = np.unique(valid_groups)       # the unqiue labels of validation data -> 1,2,3
-     
+
         normalizer = Normalizer().fit(train_data)
         train_data = normalizer.transform(train_data)
         valid_data = normalizer.transform(valid_data)
-
+    
         return train_data, valid_data, valid_groups, unique_groups
 
 
@@ -247,11 +248,11 @@ class NhisClustering():
     
     def load_model(self, path, type):
         if type == 'vae':
-            self.nhis_vae(tf.ones((1, 15)))
+            self.nhis_vae(tf.ones((1, self.original_dim)))
             self.nhis_vae.load_weights(path)
             encoder = self.nhis_vae.encoder
         else:
-            self.nhis_autoencoder(tf.ones((1, 15)))
+            self.nhis_autoencoder(tf.ones((1, self.original_dim)))
             self.nhis_autoencoder.load_weights(path)
             encoder = self.nhis_autoencoder.encoder
         
@@ -296,10 +297,10 @@ class NhisClustering():
 
 
 if __name__ == "__main__":
-    nhis_c = NhisClustering("./NHIS_OPEN_GJ_2017.csv", 15 ,3)
+    nhis_c = NhisClustering("./NHIS_OPEN_GJ_2017.csv", 13 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
     #hist = nhis_c.model_training(train_data, epoch = 50)
-    encoder = nhis_c.load_model("./training/Epoch_002_Val_22.741.hdf5", 'vae')
+    encoder = nhis_c.load_model("./training/Epoch_050_Val_13.808.hdf5", 'vae')
     nhis_c.plotting(encoder, valid_data, valid_groups)
     #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)

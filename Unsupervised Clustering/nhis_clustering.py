@@ -2,6 +2,7 @@
 from sklearn import preprocessing
 from sklearn.preprocessing import Normalizer
 from sklearn.manifold import TSNE as tsne
+from sklearn.cluster import KMeans
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import tensorflow as tf
 
@@ -32,7 +33,7 @@ class NhisClustering():
         self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
         self.nhis_autoencoder = NhisAutoencoder( self.original_dim, self.latent_dim )
         self.nhis_vae = VariationalAutoEncoder( self.original_dim, self.latent_dim )
-        
+        self.kmc      = KMeans(latent_dim)
 
     
     def data_preprocessing(self, valid_size: int) -> np.ndarray:
@@ -258,20 +259,14 @@ class NhisClustering():
         
         return encoder
 
-    def plotting(self, encoder, valid_data, valid_groups):
+    def plotting(self, latent_vector3, groups):
         
-        # in order to see (visualize) how the data is distributed across the latent variables
-        # get latent vector for visualization
-        #latent_vector = encoder.predict(valid_data)
-        _, _, latent_vector3 = encoder(valid_data)
-        latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
-
         # Applying t-sne to the 3-dimensional latent_vector
         latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector3)
 
-        low_idx = np.where(valid_groups == 1)[0]
-        high_idx = np.where(valid_groups == 2)[0]
-        no_idx = np.where(valid_groups == 3)[0]
+        low_idx = np.where(groups == 1)[0]
+        high_idx = np.where(groups == 2)[0]
+        no_idx = np.where(groups == 3)[0]
 
         df_3d = pd.DataFrame(latent_vector3, columns= ['x','y','z'])
         df_3d['groups'] = -1
@@ -293,7 +288,39 @@ class NhisClustering():
         fig.write_html('./2D_3groups_CHL.html')
         fig.show()
 
+    def get_kmeans_groups(self, latent_vector3):
+        self.kmc.fit(latent_vector3)
+        kmc_groups = self.kmc.predict(latent_vector3) + 1
 
+        return kmc_groups
+    
+    def get_mean_values(self, latent_vector3, groups):
+        low_idx = np.where(groups == 1)[0]
+        high_idx = np.where(groups == 2)[0]
+        no_idx = np.where(groups == 3)[0]
+
+        low_data_points = latent_vector3[low_idx, :]
+        high_data_points = latent_vector3[high_idx, :]
+        no_data_points = latent_vector3[no_idx, :]
+        
+        low_means = low_data_points.mean(axis = 0)
+        high_means = high_data_points.mean(axis = 0)
+        no_means = no_data_points.mean(axis = 0) 
+        
+        return [low_means, high_means, no_means]
+    
+    def get_misliad_num(self, latent_vector3, groups):
+        mean_list = self.get_mean_values(latent_vector3, groups)
+        
+        mislaid_count = 0
+        for i in range(latent_vector3.shape[0]):
+            data_point = latent_vector3[i]
+            group = groups[i]
+            
+            if (data_point - mean_list[groups]).abs().sum() > 0.5:
+                mislaid_count += 0
+        
+        return mislaid_count
 
 
 if __name__ == "__main__":
@@ -301,7 +328,18 @@ if __name__ == "__main__":
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
     #hist = nhis_c.model_training(train_data, epoch = 50)
     encoder = nhis_c.load_model("./training/Epoch_050_Val_13.808.hdf5", 'vae')
-    nhis_c.plotting(encoder, valid_data, valid_groups)
+
+
+    # in order to see (visualize) how the data is distributed across the latent variables
+    # get latent vector for visualization
+    #latent_vector = encoder.predict(valid_data)
+    _, _, latent_vector3 = encoder(valid_data)
+    latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
+    kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+    low_means, high_means, no_means = nhis_c.get_mean_values(latent_vector3, valid_groups)
+    print(low_means, high_means, no_means)
+    #nhis_c.plotting(latent_vector3, valid_groups)
+
     #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)
     #nhis_c.cluster_visualization_2D(latent_vector2, valid_groups, unique_groups)

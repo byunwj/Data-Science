@@ -19,6 +19,7 @@ from nhis_autoencoder import NhisAutoencoder, NhisEncoder, NhisDecoder
 from nhis_vae import VariationalAutoEncoder, Encoder, Decoder
 import shutil
 import plotly.express as px
+from copy import deepcopy
 
 
 
@@ -27,7 +28,7 @@ import plotly.express as px
 class NhisClustering():
 
     def __init__(self, data_path: str,  original_dim: int, latent_dim: int) -> None:
-        self.data = pd.read_csv(data_path, encoding="cp949", header=None, dtype = None)
+        self.data = pd.read_csv(data_path, encoding="cp949")
         self.original_dim = original_dim
         self.latent_dim   = latent_dim
         self.useful_col = [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 16, 17, 18, 19] # 신장(5Cm단위),체중(5Kg단위),허리둘레,시력(좌),시력(우),수축기혈압,이완기혈압,식전혈당(공복혈당),총콜레스테롤,트리글리세라이드,HDL콜레스테롤,LDL콜레스테롤,혈색소,혈청크레아티닌,(혈청지오티)AST,(혈청지오티)ALT,감마지티피																	
@@ -82,25 +83,29 @@ class NhisClustering():
         return train_data, valid_data, valid_groups, unique_groups
 
 
-    def model_training(self, train_data, epoch):
-        #autoencoder, encoder = self.nhis_autoencoder, self.nhis_autoencoder.encoder
-        #autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
-        autoencoder, encoder = self.nhis_vae, self.nhis_vae.encoder
+    def model_training(self, train_data, epoch, model_type):
+        if model_type == 'vae':
+            path = './training/VAE'
+            autoencoder = self.nhis_vae
+
+        elif model_type == 'ae':
+            path = './training/AE'
+            autoencoder = self.nhis_autoencoder
+
         autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanAbsolutePercentageError())
 
-        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 15, verbose = 1)
-
-        if os.path.isdir('./training/'):
-            shutil.rmtree('./training/')
-
-        os.makedirs('./training/', exist_ok = True)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        os.makedirs(path, exist_ok = True)
         
-        file_path = './training/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
+        
+        es = EarlyStopping(monitor='val_loss', mode = 'min' , patience = 15, verbose = 1)
+        file_path = path + '/Epoch_{epoch:03d}_Val_{val_loss:.3f}.hdf5'
         mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, \
                              save_best_only=True, save_weights_only=True)
-        print()
-        print('#################### model fitting starts ####################')
-  
+
+        print('\n \t\t\t #################### model fitting starts #################### \t\t\t \n')
+
         hist = autoencoder.fit(train_data, train_data,
                         epochs = epoch,
                         batch_size = 32,
@@ -247,12 +252,12 @@ class NhisClustering():
         plt.savefig('2D_3groups_CHL.png')
         plt.show()
     
-    def load_model(self, path, type):
-        if type == 'vae':
+    def load_model(self, path, model_type):
+        if model_type == 'vae':
             self.nhis_vae(tf.ones((1, self.original_dim)))
             self.nhis_vae.load_weights(path)
             encoder = self.nhis_vae.encoder
-        else:
+        elif model_type == 'ae':
             self.nhis_autoencoder(tf.ones((1, self.original_dim)))
             self.nhis_autoencoder.load_weights(path)
             encoder = self.nhis_autoencoder.encoder
@@ -260,7 +265,6 @@ class NhisClustering():
         return encoder
 
     def plotting(self, latent_vector3, groups):
-        
         # Applying t-sne to the 3-dimensional latent_vector
         latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector3)
 
@@ -299,13 +303,9 @@ class NhisClustering():
         high_idx = np.where(groups == 2)[0]
         no_idx = np.where(groups == 3)[0]
 
-        low_data_points = latent_vector3[low_idx, :]
-        high_data_points = latent_vector3[high_idx, :]
-        no_data_points = latent_vector3[no_idx, :]
-        
-        low_means = low_data_points.mean(axis = 0)
-        high_means = high_data_points.mean(axis = 0)
-        no_means = no_data_points.mean(axis = 0) 
+        low_means = latent_vector3[low_idx, :].mean(axis = 0)
+        high_means = latent_vector3[high_idx, :].mean(axis = 0)
+        no_means = latent_vector3[no_idx, :].mean(axis = 0)
         
         return [low_means, high_means, no_means]
     
@@ -314,31 +314,41 @@ class NhisClustering():
         
         mislaid_count = 0
         for i in range(latent_vector3.shape[0]):
+            mean_lst = deepcopy(mean_list)
             data_point = latent_vector3[i]
-            group = groups[i]
+            group = int(groups[i]) - 1
             
-            if (data_point - mean_list[groups]).abs().sum() > 0.5:
-                mislaid_count += 0
-        
+            group_mean = mean_lst.pop(group)
+            other_mean1 = mean_lst.pop()
+            other_mean2 = mean_lst.pop()
+
+            assert len(mean_lst) == 0
+            
+            if abs(data_point - group_mean).sum() > abs(data_point - other_mean1).sum() or \
+            abs(data_point - group_mean).sum() > abs(data_point - other_mean2).sum():
+                mislaid_count += 1
+
         return mislaid_count
 
 
 if __name__ == "__main__":
     nhis_c = NhisClustering("./NHIS_OPEN_GJ_2017.csv", 13 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    #hist = nhis_c.model_training(train_data, epoch = 50)
-    encoder = nhis_c.load_model("./training/Epoch_050_Val_13.808.hdf5", 'vae')
+    #hist = nhis_c.model_training(train_data, 50, 'ae')
 
-
+    encoder = nhis_c.load_model("./training/AE/Epoch_049_Val_11.092.hdf5", 'ae')
     # in order to see (visualize) how the data is distributed across the latent variables
     # get latent vector for visualization
     #latent_vector = encoder.predict(valid_data)
-    _, _, latent_vector3 = encoder(valid_data)
+    #_, _, latent_vector3 = encoder(valid_data) # vae
+    latent_vector3 = encoder(valid_data)        # ae
+    
     latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
-    kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
-    low_means, high_means, no_means = nhis_c.get_mean_values(latent_vector3, valid_groups)
-    print(low_means, high_means, no_means)
-    #nhis_c.plotting(latent_vector3, valid_groups)
+    #kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+    mislaid_count = nhis_c.get_misliad_num(latent_vector3, valid_groups)
+    print(mislaid_count)
+
+    nhis_c.plotting(latent_vector3, valid_groups)
 
     #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)

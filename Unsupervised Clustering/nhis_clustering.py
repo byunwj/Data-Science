@@ -104,7 +104,7 @@ class NhisClustering():
         mc = ModelCheckpoint(file_path, monitor='val_loss', mode='min',verbose=1, \
                              save_best_only=True, save_weights_only=True)
 
-        print('\n \t\t\t #################### model fitting starts #################### \t\t\t \n')
+        print('\n\n \t\t\t #################### model fitting starts #################### \t\t\t \n\n')
 
         hist = autoencoder.fit(train_data, train_data,
                         epochs = epoch,
@@ -264,7 +264,7 @@ class NhisClustering():
         
         return encoder
 
-    def plotting(self, latent_vector3, groups):
+    def plotting(self, latent_vector3, groups, model_type):
         # Applying t-sne to the 3-dimensional latent_vector
         latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector3)
 
@@ -279,7 +279,8 @@ class NhisClustering():
         df_3d['groups'].iloc[no_idx] = 'normal cholesterol'
         
         fig = px.scatter_3d(df_3d, x='x', y='y', z='z', color='groups')
-        fig.write_html('./3D_3groups_CHL.html')
+        path_3d = './'+ model_type +'_3D_3groups_CHL.html'
+        fig.write_html(path_3d)
         fig.show()
 
         df_2d = pd.DataFrame(latent_vector2, columns= ['x','y'])
@@ -289,7 +290,8 @@ class NhisClustering():
         df_2d['groups'].iloc[no_idx] = 'normal cholesterol'
         
         fig = px.scatter(df_3d, x='x', y='y', color='groups')
-        fig.write_html('./2D_3groups_CHL.html')
+        path_2d = './'+ model_type +'_2D_3groups_CHL.html'
+        fig.write_html(path_2d)
         fig.show()
 
     def get_kmeans_groups(self, latent_vector3):
@@ -334,21 +336,31 @@ class NhisClustering():
 if __name__ == "__main__":
     nhis_c = NhisClustering("./NHIS_OPEN_GJ_2017.csv", 13 ,3)
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
-    #hist = nhis_c.model_training(train_data, 50, 'ae')
+    #hist = nhis_c.model_training(train_data, 50, 'vae')
 
-    encoder = nhis_c.load_model("./training/AE/Epoch_049_Val_11.092.hdf5", 'ae')
+    encoder = nhis_c.load_model("./training/AE/Epoch_006_Val_13.831.hdf5", 'ae')
+    #encoder = nhis_c.load_model("./training/VAE/Epoch_050_Val_13.813.hdf5", 'vae')
+   
     # in order to see (visualize) how the data is distributed across the latent variables
     # get latent vector for visualization
     #latent_vector = encoder.predict(valid_data)
-    #_, _, latent_vector3 = encoder(valid_data) # vae
+    #_, _, latent_vector3 = encoder(valid_data)  # vae
     latent_vector3 = encoder(valid_data)        # ae
     
     latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
-    #kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+    kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+
+    diff_count = 0
+    for i in range(len(kmc_groups)):
+        if kmc_groups[i] != valid_groups[i]:
+            diff_count += 1
+    
+    print("diff percentage: ", (diff_count/len(kmc_groups)) * 100) 
+
     mislaid_count = nhis_c.get_misliad_num(latent_vector3, valid_groups)
     print(mislaid_count)
 
-    nhis_c.plotting(latent_vector3, valid_groups)
+    #nhis_c.plotting(latent_vector3, valid_groups, 'VAE')
 
     #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)

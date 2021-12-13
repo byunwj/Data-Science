@@ -13,10 +13,11 @@ Each person was then given a label (which of course was not used in training) ac
 
 ## Result Visualization
 Below are the clustering results of t-SNE, AE, and VAE, respectively. It can be seen that the result of t-SNE forms very rough clusters with many of the data points being considerably far from the center of their clusters. In AE's result, more pronounced clusters are formed with a handful of data points being closer to another cluster's center. In VAE's result, similar result can be observed but with seemingly less data points being mislaid. In order to preicsely see which model yielded a clearer clusters, I did the following two:  
-(1). calculated how many data points in the latent vectors are 'mislaid' by counting how many of them are closer to another group's center than to its own group's center
-(2). further compressed the 3d latent vectors to 2d latent vectors using to see how easily information in the 3d latent vectors could be translated into 2d latent vectors  
+(1). calculated the silhouette score, which is a popular clustering metric, for the 3d latent vector result of each model
+(2). further compressed the 3d latent vectors to 2d latent vectors using to see how easily information in the 3d latent vectors could be translated into 2d latent vectors and calculated the silhouette score again  
 
-For fairness, I used the saved weights of each model around the same epoch. The result of AE had 30 data points that were mislaid, while that of VAE had 46 data points mislaid. However, when further compressed to 2d latent vectors, the result of VAE showed a lot clearer clusters even in 2d. (refer to 2d_clustering_ae & 2d_clustering_vae in Unsupervised Clustering folder)
+As the VAE model includes the KL error in addition to the reconstruction error while the AE model includes just the reconstruction error, I thought it would be unfair to just compare the validation loss. Thus, for fairness, I used the saved weights of each model around the same epoch. Comparing the silhouette score of the 3d latent vectors, the result of AE model was scored 0.23 while the result of VAE model was scored 0.18. Comparing the silhouette score of the 2d latent vectors, 
+the result of the result of AE model was scored 0.43 while the result of VAE model was scored 0.38. It can be seen that the silhouette scores for both 2d and 3d were higher for the AE model. However, the surprising part is that even though the 2d latent vector result of the VAE model formed much clearer clusters than that of the AE model when visualized, the silhouette score for the AE model was still higher. To see that nicer clusters when visualized does not necessarily translate to higher clustering metric was unexpected. 
 
 For purely experimental purposes, I also applied K-means clustering algorithm to the latent vectors to see how a classical ML algorithm would define the clusters and calculate the same metric as I did for the three results. 
 

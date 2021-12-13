@@ -3,6 +3,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import Normalizer
 from sklearn.manifold import TSNE as tsne
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import tensorflow as tf
 
@@ -338,29 +339,36 @@ if __name__ == "__main__":
     train_data, valid_data, valid_groups, unique_groups = nhis_c.data_preprocessing(400)
     #hist = nhis_c.model_training(train_data, 50, 'vae')
 
-    encoder = nhis_c.load_model("./training/AE/Epoch_006_Val_13.831.hdf5", 'ae')
+    encoder = nhis_c.load_model("./training/AE/Epoch_049_Val_11.092.hdf5", 'ae')
     #encoder = nhis_c.load_model("./training/VAE/Epoch_050_Val_13.813.hdf5", 'vae')
    
     # in order to see (visualize) how the data is distributed across the latent variables
     # get latent vector for visualization
     #latent_vector = encoder.predict(valid_data)
-    #_, _, latent_vector3 = encoder(valid_data)  # vae
+    #latent_vector3, _, _  = encoder(valid_data)  # vae
     latent_vector3 = encoder(valid_data)        # ae
     
     latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
-    kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+    #kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+    latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector3)
 
-    diff_count = 0
-    for i in range(len(kmc_groups)):
-        if kmc_groups[i] != valid_groups[i]:
-            diff_count += 1
+    sil_score = silhouette_score(latent_vector3, valid_groups)
+    print('3d silhouette score:', sil_score)
+
+    sil_score = silhouette_score(latent_vector2, valid_groups)
+    print('2d silhouette score:', sil_score)
+
+    #diff_count = 0
+    #for i in range(len(kmc_groups)):
+    #    if kmc_groups[i] != valid_groups[i]:
+    #        diff_count += 1
     
-    print("diff percentage: ", (diff_count/len(kmc_groups)) * 100) 
+    #print("diff percentage: ", (diff_count/len(kmc_groups)) * 100) 
 
     mislaid_count = nhis_c.get_misliad_num(latent_vector3, valid_groups)
     print(mislaid_count)
 
-    #nhis_c.plotting(latent_vector3, valid_groups, 'VAE')
+    nhis_c.plotting(latent_vector3, valid_groups, 'AE')
 
     #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)

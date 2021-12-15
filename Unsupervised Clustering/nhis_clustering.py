@@ -349,14 +349,17 @@ if __name__ == "__main__":
     latent_vector3 = encoder(valid_data)        # ae
     
     latent_vector3 = latent_vector3.numpy() # an eager tensor is returned
-    #kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
+    kmc_groups  = nhis_c.get_kmeans_groups(latent_vector3)
     latent_vector2 = tsne(n_components = 2).fit_transform(latent_vector3)
 
     sil_score = silhouette_score(latent_vector3, valid_groups)
     print('3d silhouette score:', sil_score)
 
-    sil_score = silhouette_score(latent_vector2, valid_groups)
-    print('2d silhouette score:', sil_score)
+    sil_score2 = silhouette_score(latent_vector2, valid_groups)
+    print('2d silhouette score:', sil_score2)
+
+    sil_score3 = silhouette_score(latent_vector3, kmc_groups)
+    print('K-means Clustering silhouette score:', sil_score3)
 
     #diff_count = 0
     #for i in range(len(kmc_groups)):
@@ -365,10 +368,10 @@ if __name__ == "__main__":
     
     #print("diff percentage: ", (diff_count/len(kmc_groups)) * 100) 
 
-    mislaid_count = nhis_c.get_misliad_num(latent_vector3, valid_groups)
-    print(mislaid_count)
+    #mislaid_count = nhis_c.get_misliad_num(latent_vector3, valid_groups)
+    #print(mislaid_count)
 
-    nhis_c.plotting(latent_vector3, valid_groups, 'AE')
+    #nhis_c.plotting(latent_vector3, valid_groups, 'AE')
 
     #latent_vector3, latent_vector2 = nhis_c.tsne_clustering(train_data, valid_data)
     #nhis_c.cluster_visualization_3D(latent_vector, valid_groups, unique_groups)

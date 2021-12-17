@@ -1,36 +1,60 @@
 import tensorflow as tf
 import numpy as np
-
-"""
-there are two ways to freeze certain weights:
-1. use tf.stop_gradient()
-2. specify only the weights that you want to be updated in var_list inside optim.minimize()ss
-"""
+from tensorflow.python.ops.numpy_ops.np_array_ops import var
 
 tf.compat.v1.disable_eager_execution()
 
-sess = tf.compat.v1.Session()
+class TFExample():
+    def __init__(self, input_dim, hidden_dim, output_dim, freeze_weights = True):
+        self.sess = tf.compat.v1.Session()
+        self.freeze_weights = freeze_weights
 
-x = tf.compat.v1.placeholder(tf.float32,[3,2])
-y = tf.compat.v1.placeholder(tf.float32,[3,4])
-w1 = tf.compat.v1.Variable(tf.ones([2,3]))
-w2 = tf.compat.v1.Variable(tf.ones([3,4]))
+        self.x = tf.compat.v1.placeholder(tf.float32,[None, input_dim])
+        self.y = tf.compat.v1.placeholder(tf.float32,[None, output_dim])
+        self.w1 = tf.compat.v1.Variable( tf.compat.v1.truncated_normal( shape = [input_dim, hidden_dim]) )
+        self.w2 = tf.compat.v1.Variable( tf.compat.v1.truncated_normal( shape = [hidden_dim, output_dim]) )
 
-hidden = tf.stop_gradient(tf.matmul(x,w1))
-#hidden = tf.matmul(x,w1)
+        self.output = self.make_output(self.x, self.freeze_weights)
+        self.loss = self.output - self.y
 
-output = tf.matmul(hidden,w2)
-loss = output - y
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(0.01).minimize(self.loss)
+        #self.optimizer = tf.compat.v1.train.AdamOptimizer(0.01).minimize(self.loss, var_list = self.w2)
 
-optimizer = tf.compat.v1.train.AdamOptimizer(0.001).minimize(loss)
-#optimizer = tf.compat.v1.train.AdamOptimizer(0.001).minimize(loss, var_list = w2)
+        self.train_x = np.random.normal(size = (4, input_dim))
+        self.train_y = np.random.normal(size = (4, output_dim))
+        
+        self.sess.run(tf.compat.v1.global_variables_initializer())
 
-sess.run(tf.compat.v1.global_variables_initializer())
-w1_val, w2_val = sess.run([w1, w2])
-print("\n initial weights:")
-print("\n w1 = \n",w1_val,"\n","\n w2 = \n",w2_val)
 
-sess.run([optimizer], feed_dict = {x:np.random.normal(size = (3,2)),y:np.random.normal(size = (3,4))})
-w1_val, w2_val = sess.run([w1, w2])
-print("\n changed weights:")
-print("\n w1 = \n",w1_val,"\n","\n w2 = \n",w2_val)
+    def make_output(self, x, freeze_weights, scope = None):
+        
+        if freeze_weights:
+            hidden = tf.stop_gradient(tf.matmul(x,self.w1))
+        else:
+            hidden = tf.matmul(x, self.w1)
+
+        output = tf.matmul(hidden, self.w2)
+
+        return output
+
+    def train(self, epochs = 1, data = None):
+        for epoch in range(epochs):
+            self.sess.run([self.optimizer], 
+            feed_dict = {self.x: self.train_x, self.y: self.train_y})
+
+
+
+if __name__ == '__main__':
+    tfe = TFExample(2, 4, 1)
+
+    w1_val, w2_val = tfe.sess.run([tfe.w1, tfe.w2])
+    print("\n initial weights:")
+    print("\n w1 = \n",w1_val,"\n","\n w2 = \n",w2_val) 
+
+    tfe.train(epochs= 50)
+    w1_val, w2_val = tfe.sess.run([tfe.w1, tfe.w2])
+    print("\n trained weights:")
+    print("\n w1 = \n",w1_val,"\n","\n w2 = \n",w2_val)
+
+
+

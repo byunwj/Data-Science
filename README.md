@@ -39,3 +39,72 @@ For purely experimental purposes, I also applied K-means clustering algorithm to
 <figcaption>3D Clustering by Variational AutoEncoder</figcaption>
 </figure>
 </br>
+
+# TensorFlow
+## tf.stop_gradient() 
+
+tf.stop_gradient() can be used when you do not want to update certain weights during backpropagation as below:  
+
+```
+x = tf.compat.v1.placeholder(tf.float32,[None, input_dim])
+y = tf.compat.v1.placeholder(tf.float32,[None, output_dim])
+w1 = tf.compat.v1.Variable( tf.compat.v1.truncated_normal( shape = [input_dim, hidden_dim]) )
+w2 = tf.compat.v1.Variable( tf.compat.v1.truncated_normal( shape = [hidden_dim, output_dim]) )
+hidden = tf.stop_gradient(tf.matmul(x, w1))
+output = tf.matmul(hidden, w2)
+loss = output - y
+optimizer = tf.compat.v1.train.AdamOptimizer(0.01).minimize(loss)
+```
+As a result, after the weight updates, w1 remains the same while w2 gets updated as shown below:  
+
+```
+ initial weights:
+ w1 = 
+ [[ 1.1496285  -1.5963056  -1.4022949  -1.7677178 ]
+ [ 0.45795143 -0.50486845  0.43018925 -1.2649945 ]] 
+ 
+ w2 = 
+ [[-0.37988296]
+ [-0.35934356]
+ [-1.4428393 ]
+ [-1.4217583 ]]
+
+ trained weights:
+ w1 = 
+ [[ 1.1496285  -1.5963056  -1.4022949  -1.7677178 ]
+ [ 0.45795143 -0.50486845  0.43018925 -1.2649945 ]] 
+ 
+ w2 = 
+ [[-0.87988234]
+ [ 0.14065644]
+ [-1.9428387 ]
+ [-0.9217589 ]]
+```
+
+There also seems to be another way to update only certain weights.  
+It is by using the *var_list* parameter of the optimizer's minimize function.
+The snippet code below would yield the same effect as using tf.stop_gradient() in the above snippet code.
+Instead of creating variables under specifc scopes and retrieving them using get_collection like below, one can simply just pass in a list of the variables that should be updated. ( ex) var_list = [w2] )  
+Creating variables under specific scopes becomes useful when the number of variables gets big. 
+
+```
+x = tf.compat.v1.placeholder(tf.float32,[None, input_dim])
+y = tf.compat.v1.placeholder(tf.float32,[None, output_dim])
+with tf.compat.v1.variable_scope('not_update'):
+    w1 = tf.compat.v1.Variable( tf.compat.v1.truncated_normal( shape = [input_dim, hidden_dim]) )
+with tf.compat.v1.variable_scope('update'):
+    w2 = tf.compat.v1.Variable( tf.compat.v1.truncated_normal( shape = [hidden_dim, output_dim]) )
+update_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope='update')
+hidden = tf.matmul(x, w1)      # not using tf.stop_gradient()
+output = tf.matmul(hidden, w2)
+loss = output - y
+# specify  that the variables created under 'update' scope should only be updated
+optimizer = tf.compat.v1.train.AdamOptimizer(0.01).minimize(loss, var_list = update_vars) 
+```
+
+Above are just example snippets, and more details can be found in tf.stop_gradient.py in TensorFlow folder.
+
+
+<!--\
+## tf.GradientTape()
+>

@@ -83,7 +83,7 @@ As a result, after the weight updates, w1 remains the same while w2 gets updated
 
 There also seems to be another way to update only certain weights.  
 It is by using the *var_list* parameter of the optimizer's minimize function.
-The snippet code below would yield the same effect as using tf.stop_gradient() in the above snippet code.
+The code snippet below would yield the same effect as using tf.stop_gradient() in the above code snippet.
 Instead of creating variables under specifc scopes and retrieving them using get_collection like below, one can simply just pass in a list of the variables that should be updated. ( ex) var_list = [w2] )  
 Creating variables under specific scopes becomes useful when the number of variables gets big. 
 
@@ -98,13 +98,46 @@ update_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLE
 hidden = tf.matmul(x, w1)      # not using tf.stop_gradient()
 output = tf.matmul(hidden, w2)
 loss = output - y
-# specify  that the variables created under 'update' scope should only be updated
-optimizer = tf.compat.v1.train.AdamOptimizer(0.01).minimize(loss, var_list = update_vars) 
+optimizer = tf.compat.v1.train.AdamOptimizer(0.01).minimize(loss, var_list = update_vars) # specify that the variables created under 
+                                                                                          # 'update' scope should only be updated
 ```
 
 Above are just example snippets, and more details can be found in tf.stop_gradient.py in TensorFlow folder.
 
 
-<!--\
-## tf.GradientTape()
->
+
+## tf.GradientTape() & @tf.function decorator
+As TF2 was developed aiming for tight integration with Keras and user friendliness, model.fit() method is widely used for its simplicity. 
+However, model.fit() lacks flexibility as the training step function is alreay defined inside the fit() function. Thus, tf.GradientTape() becomes useful when you want to write a custom training loop since you can override the training step function of the tf.keras.Model class.  
+The code in tf.GradientTape.py in TensorFlow folder is to just show how to use tf.GradientTape() as opposed to model.fit(). The code snippet below illustrates using tf.GradientTape() to do the same job as model.fit().  
+
+```
+@tf.function
+def update_weights(x_batch, y_batch, x_batch_val, y_batch_val, model, loss_fn, opt):
+    with tf.GradientTape() as tape:
+        y = model(x_batch, training=True)
+        loss = loss_fn(y_batch, y)
+        accuracy = tf.keras.metrics.sparse_categorical_accuracy(y_batch, y)
+
+        y_val = model(x_batch_val, training = False)
+        val_loss = loss_fn(y_batch_val, y_val)
+        val_accuracy = tf.keras.metrics.sparse_categorical_accuracy(y_batch_val, y_val)
+
+    grads = tape.gradient(loss, model.trainable_variables)
+    opt.apply_gradients(zip(grads, model.trainable_variables))
+
+    return loss, accuracy, val_loss, val_accuracy
+
+
+def train(model, loss_fn, opt, epochs, train_dataset, val_dataset):
+    for i in range(epochs):
+        for (x_batch, y_batch), (x_batch_val, y_batch_val) in zip(train_dataset, val_dataset) :
+            loss, accuracy, val_loss, val_accuracy = update_weights(x_batch, y_batch, x_batch_val, y_batch_val, model, loss_fn, opt)
+        print('epoch {} \t loss:'.format(i+1), np.mean(loss), '/ accuracy:', np.mean(accuracy), 
+                                                              '\t val loss:', np.mean(val_loss),
+                                                               '/ val accuray:', np.mean(val_accuracy), '\n')
+```
+It is also noteworthy to mention that applying @tf.function decorator to update_weights() function is crucial for training speed.
+@tf.function converts a Python function to its graph representation. 
+
+

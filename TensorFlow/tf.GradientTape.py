@@ -32,27 +32,30 @@ def get_model(loss_fn, opt):
     
 
 @tf.function
-def update_weights(x_batch, y_batch, model, loss_fn, opt):
+def update_weights(x_batch, y_batch, x_batch_val, y_batch_val, model, loss_fn, opt):
     with tf.GradientTape() as tape:
         y = model(x_batch, training=True)
         loss = loss_fn(y_batch, y)
         accuracy = tf.keras.metrics.sparse_categorical_accuracy(y_batch, y)
+
+        y_val = model(x_batch_val, training = False)
+        val_loss = loss_fn(y_batch_val, y_val)
+        val_accuracy = tf.keras.metrics.sparse_categorical_accuracy(y_batch_val, y_val)
+
     grads = tape.gradient(loss, model.trainable_variables)
     opt.apply_gradients(zip(grads, model.trainable_variables))
 
-    return loss, accuracy
+    return loss, accuracy, val_loss, val_accuracy
 
 
-def train(model, loss_fn, opt, x_train, y_train, epochs, batch_size, train_dataset):
-    #for i in range(epochs):
-    #    for x_batch, y_batch in train_dataset:
-    #        loss, accuracy = update_weights(x_batch, y_batch, model, loss_fn, opt)
-    #    print('epoch {} \t loss:'.format(i+1), np.mean(loss), '/ accuracy:', np.mean(accuracy))
-
+def train(model, loss_fn, opt, epochs, train_dataset, val_dataset):
     for i in range(epochs):
-        for x_batch, y_batch in tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size):
-            loss, accuracy = update_weights(x_batch, y_batch, model, loss_fn, opt)
-        print('epoch {} \t loss:'.format(i+1), np.mean(loss), '/ accuracy:', np.mean(accuracy))
+        for (x_batch, y_batch), (x_batch_val, y_batch_val) in zip(train_dataset, val_dataset) :
+            loss, accuracy, val_loss, val_accuracy = update_weights(x_batch, y_batch, x_batch_val, y_batch_val, model, loss_fn, opt)
+        print('Epoch {}/{} \nloss:'.format(i+1, epochs), np.mean(loss), '/ accuracy:', np.mean(accuracy), 
+                                                              '\t val loss:', np.mean(val_loss),
+                                                               '/ val accuray:', np.mean(val_accuracy), '\n')
+
 
 
 if __name__ == '__main__':
@@ -69,22 +72,13 @@ if __name__ == '__main__':
 
     train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(64)
-    test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
-    test_dataset = test_dataset.batch(64)
+    val_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    val_dataset = val_dataset.batch(64)
 
-    #model.fit(train_dataset, epochs = 5)
-    
-    """
-    print('time:', timeit.timeit(lambda: model.fit(x_train, y_train,
-            batch_size=64,
-            epochs=5,
-            verbose=1,
-            validation_data= (x_test, y_test)
-            ) , number = 5))    
-    """
-    
-    
-    
-    print('time:', timeit.timeit(lambda: train(model, loss_fn, opt, x_train, y_train, 5, 64, train_dataset), number = 5))
+    #print('time:', timeit.timeit(lambda: model.fit(train_dataset, verbose = 1, epochs = 5, validation_data = val_dataset), 
+    #                            number = 5))
+
+    #model = get_model(loss_fn, opt)
+    print('time:', timeit.timeit(lambda: train(model, loss_fn, opt, 5, train_dataset, val_dataset), number = 5))
     
     

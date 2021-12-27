@@ -106,7 +106,7 @@ Above are just example snippets, and more details can be found in tf.stop_gradie
 
 
 
-## tf.GradientTape() & @tf.function decorator
+## tf.GradientTape() & tf.function decorator
 As TF2 was developed aiming for tight integration with Keras and user friendliness, model.fit() method is widely used for its simplicity. 
 However, model.fit() lacks flexibility as the training step function is alreay defined inside the fit() function. Thus, tf.GradientTape() becomes useful when you want to write a custom training loop since you can override the training step function of the tf.keras.Model class.  
 The code in tf.GradientTape.py in TensorFlow folder is to just show how to use tf.GradientTape() as opposed to model.fit(). The code snippet below illustrates using tf.GradientTape() to do the same job as model.fit().  
@@ -138,6 +138,24 @@ def train(model, loss_fn, opt, epochs, train_dataset, val_dataset):
                                                                '/ val accuray:', np.mean(val_accuracy), '\n')
 ```
 It is also noteworthy to mention that applying @tf.function decorator to update_weights() function is crucial for training speed.
-@tf.function converts a Python function to its graph representation. 
+In TF2, TensorFlow is run eagerly by default. It means that TF operations are excuted operation by operation which is more intuitive in terms of coding in Python. However, there is a downside of slower speed. 
+@tf.function compiles a function into a callable TensorFlow graph which means TF is now switched to graph execution. In graph execution, tensor computations are executed as a TF **graph**. 
+"Graphs are data structures that contain a set of tf.Operation objects, which represent units of computation; and tf.Tensor objects, which represent the units of data that flow between operations."
+(from tensorflow.org)  
+When there are many small ops like the code above inside tf.gradientTape(), decorating the function with tf.function can help with performance. 
+
+
+
+## tf.data.dataset
+tf.data.Dataset.shuffle(buffer_size) function randomly shuffles the elements of tf.data.Dataset datasets. 
+" This dataset fills a buffer with buffer_size elements, then randomly samples elements from this buffer, replacing the selected elements with new elements. For perfect shuffling, a buffer size greater than or equal to the full size of the dataset is required." (from tensorflow.org)  
+
+I am writing about this method as, for some reason, it took longer than expected to fully grasp the process. The above explanation can be easily understood with a simple example. 
+Suppose the dataset is [0, 1, 2] and you call tf.data.Dataset.shuffle(2).
+Then, the initial buffer would be [0, 1] from which a random sample would be sampled. 
+Say 1 is sampled. Then, the buffer now becomes [0, 2] and the new shuffled dataset is [1].
+Now, say 0 is randomly sampled from the buffer [0, 2]. Then, the buffer is now [2] since there is no more element to replace the randomly sampled element, and the new shuffled dataset is [1, 0].
+Lastly, 2 would be put into the new shuffled dataset, resulting in [1, 0, 2]. You can also see by this example that the buffer size has to be greater than or equal to the full size of the dataset for perfect shuffling. Since the buffer was initialized with [0, 1] in the example above, 2 could never be sampled in the first round, and if it is not sampled in the second round like in the example as well, its location in the dataset remains the same in the new shuffled dataset.
+
 
 
